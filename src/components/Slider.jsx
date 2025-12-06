@@ -1,5 +1,8 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
+import useGameStore from '../store/gameStore';
+
+const MAX_ANGLE = 90; // +/- 90 degrees
 
 const Slider = ({
     value = 50,
@@ -10,8 +13,8 @@ const Slider = ({
     targetWidth = 10, // Width of the winning zone in percent
     className
 }) => {
-    const containerRef = useRef(null);
-    const [constraints, setConstraints] = useState({ width: 0, height: 0 });
+    const { syncSlider } = useGameStore();
+    const constraintsRef = useRef(null);
 
     // Angle: -90 (left) to 90 (right). 0 is top/center.
     // Input Value: 0 to 100.
@@ -81,11 +84,13 @@ const Slider = ({
                 newAngle = Math.max(-MAX_ANGLE, Math.min(MAX_ANGLE, newAngle));
                 animate(angle, newAngle, { type: "spring", bounce: 0.1 });
                 if (onChange) onChange(angleToValue(newAngle));
+                syncSlider && syncSlider(angleToValue(newAngle)); // Sync on instant jump
             }}
         >
             <motion.div
                 className="absolute inset-0 w-full h-full cursor-grab active:cursor-grabbing"
                 onPan={handlePan}
+                onPanEnd={() => syncSlider && syncSlider(angleToValue(angle.get()))}
             >
                 {/* Background Arc */}
                 <svg viewBox="0 0 200 100" className="w-full h-full overflow-visible">

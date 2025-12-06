@@ -202,75 +202,196 @@ const THEMES = [
     { left: "Pas magique", right: "Wizard mode" },
     { left: "Petit bonheur", right: "Bonheur ultime" }
 ];
-const useGameStore = create((set) => ({
-    gameState: 'HOME', // HOME, LOBBY, PLAYING
-    gamePhase: 'THINKING', // THINKING, GUESSING, REVEAL
-    gameMode: 'ONLINE', // ONLINE, OFFLINE
+// ... imports
+import { createOnlineRoom, joinOnlineRoom, subscribeToRoom, updateRoomState } from '../services/firebase';
 
+const useGameStore = create((set, get) => ({
+    // ... initial state ...
+    gameState: 'HOME',
+    gamePhase: 'THINKING',
+    gameMode: 'ONLINE',
     isHost: false,
     roomCode: null,
     nickname: '',
     players: [],
-
-    // Game Data
     theme: THEMES[0],
-    targetValue: 50, // 0-100
+    targetValue: 50,
     clue: '',
     sliderValue: 50,
     skipsRemaining: 2,
 
-    // Actions
     setNickname: (name) => set({ nickname: name }),
-    createRoom: () => set((state) => ({
-        gameState: 'LOBBY',
-        gameMode: 'ONLINE',
-        isHost: true,
-        roomCode: Math.random().toString(36).substring(2, 6).toUpperCase(),
-        players: [{ name: state.nickname || 'Host', id: 1 }]
-    })),
-    joinRoom: (code) => set((state) => ({
-        gameState: 'LOBBY',
-        gameMode: 'ONLINE',
-        isHost: false,
-        roomCode: code,
-        players: [{ name: 'Host', id: 1 }, { name: state.nickname || 'Guest', id: 2 }]
-    })),
-    startGame: () => set({
-        gameState: 'PLAYING',
-        gamePhase: 'THINKING',
-        theme: THEMES[Math.floor(Math.random() * THEMES.length)],
-        targetValue: Math.random() * 100,
-        skipsRemaining: 2
-    }),
+
+    createRoom: async () => {
+        const state = get();
+        const code = Math.random().toString(36).substring(2, 6).toUpperCase();
+        const initialPlayers = [{ name: state.nickname || 'Hôte', id: Date.now() }];
+
+        const initialRoomState = {
+            gameState: 'LOBBY',
+            gamePhase: 'THINKING',
+            players: initialPlayers,
+            theme: THEMES[Math.floor(Math.random() * THEMES.length)],
+            targetValue: Math.random() * 100,
+            clue: '',
+            sliderValue: 50,
+            skipsRemaining: 2
+        };
+
+        // Create in Firebase
+        await createOnlineRoom(code, initialRoomState);
+
+        set({
+            gameState: 'LOBBY',
+            gameMode: 'ONLINE',
+            isHost: true,
+            roomCode: code,
+            players: initialPlayers,
+            // Subscribe to updates immediately
+        });
+
+        // Setup subscription
+        get().subscribeToRoom(code);
+    },
+
+    joinRoom: async (code) => {
+        const state = get();
+        const player = { name: state.nickname || 'Invité', id: Date.now() };
+
+        try {
+            await joinOnlineRoom(code, player);
+            set({
+                gameState: 'LOBBY',
+                gameMode: 'ONLINE',
+                isHost: false,
+                roomCode: code
+            });
+            get().subscribeToRoom(code);
+        } catch (e) {
+            alert("Room introuvable !");
+        }
+    },
+
+    subscribeToRoom: (code) => {
+        const unsubscribe = subscribeToRoom(code, (data) => {
+            // sync local state with remote data
+            set({
+                gameState: data.gameState,
+                gamePhase: data.gamePhase,
+                players: data.players,
+                theme: data.theme,
+                targetValue: data.targetValue,
+                clue: data.clue,
+                // Only sync sliderValue if we are in reveal phase or if needed?
+                // Real-time slider sync might be heavy. Let's sync it on critical events or throttle it.
+                // For now, let's sync it to allow watching the guesser.
+                sliderValue: data.sliderValue,
+                skipsRemaining: data.skipsRemaining
+            });
+        });
+        // We could store the unsubscribe function if we needed to cleanup
+    },
+
+    startGame: () => {
+        const state = get();
+        const updates = {
+            gameState: 'PLAYING',
+            gamePhase: 'THINKING',
+            theme: THEMES[Math.floor(Math.random() * THEMES.length)],
+            targetValue: Math.random() * 100,
+            skipsRemaining: 2
+        };
+
+        if (state.gameMode === 'ONLINE') {
+            updateRoomState(state.roomCode, updates);
+        } else {
+            set(updates);
+        }
+    },
+
     startOfflineGame: () => set({
         gameState: 'PLAYING',
         gameMode: 'OFFLINE',
         gamePhase: 'THINKING',
         theme: THEMES[Math.floor(Math.random() * THEMES.length)],
         targetValue: Math.random() * 100,
-        players: [{ name: 'Players', id: 1 }],
+        players: [{ name: 'Joueurs', id: 1 }],
         skipsRemaining: 2
     }),
-    submitClue: (clue) => set({ clue, gamePhase: 'GUESSING' }),
-    submitGuess: () => set({ gamePhase: 'REVEAL' }),
-    nextRound: () => set({
-        gamePhase: 'THINKING',
-        clue: '',
-        targetValue: Math.random() * 100,
-        sliderValue: 50,
-        theme: THEMES[Math.floor(Math.random() * THEMES.length)],
-        skipsRemaining: 2
-    }),
-    skipTheme: () => set((state) => {
+
+    submitClue: (clue) => {
+        const state = get();
+        if (state.gameMode === 'ONLINE') {
+            updateRoomState(state.roomCode, { clue, gamePhase: 'GUESSING' });
+        } else {
+            set({ clue, gamePhase: 'GUESSING' });
+        }
+    },
+
+    submitGuess: () => {
+        const state = get();
+        if (state.gameMode === 'ONLINE') {
+            updateRoomState(state.roomCode, { gamePhase: 'REVEAL' });
+        } else {
+            set({ gamePhase: 'REVEAL' });
+        }
+    },
+
+    nextRound: () => {
+        const state = get();
+        const updates = {
+            gamePhase: 'THINKING',
+            clue: '',
+            targetValue: Math.random() * 100,
+            sliderValue: 50,
+            theme: THEMES[Math.floor(Math.random() * THEMES.length)],
+            skipsRemaining: 2
+        };
+
+        if (state.gameMode === 'ONLINE') {
+            updateRoomState(state.roomCode, updates);
+        } else {
+            set(updates);
+        }
+    },
+
+    skipTheme: () => {
+        const state = get();
         if (state.skipsRemaining > 0) {
-            return {
+            const updates = {
                 theme: THEMES[Math.floor(Math.random() * THEMES.length)],
                 skipsRemaining: state.skipsRemaining - 1
             };
+            if (state.gameMode === 'ONLINE') {
+                updateRoomState(state.roomCode, updates);
+            } else {
+                set(updates);
+            }
         }
-        return state;
-    }),
-    setSliderValue: (val) => set({ sliderValue: val }),
+    },
+
+    setSliderValue: (val) => {
+        set({ sliderValue: val });
+        // Optional: Throttle broadcast of slider value to others?
+        // For simplicity, we won't broadcast every micro-movement to avoid write limits,
+        // but typically you'd want to.
+        // Let's rely on local update and only submitGuess finalizes it?
+        // Actually, users like to see the slider move? 
+        // Let's skip live syncing slider for now to save quota/complexity, 
+        // OR add a throttled update if asked.
+        // User didn't explicitly ask for live slider syncing, just "Online Mode".
+        // The most important is phases and clues.
+        // But for "submitGuess", we need the value. 
+        // We should probably update the remote sliderValue when submitting.
+    },
+
+    // Explicit sync for slider on release/end of drag could be added to Slider component
+    syncSlider: (val) => {
+        const state = get();
+        if (state.gameMode === 'ONLINE') {
+            updateRoomState(state.roomCode, { sliderValue: val });
+        }
+    }
 }));
 
 export default useGameStore;
