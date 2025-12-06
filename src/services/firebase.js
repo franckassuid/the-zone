@@ -15,17 +15,25 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-// We wrap this in a try-catch or check if config is present to avoid crashing if keys aren't set
 let db;
 try {
-    const app = initializeApp(firebaseConfig);
-    db = getFirestore(app);
+    // Only initialize if we have at least an API key, otherwise allow "mock" online mode
+    if (firebaseConfig.apiKey) {
+        const app = initializeApp(firebaseConfig);
+        db = getFirestore(app);
+    } else {
+        console.warn("Firebase config missing. Running in Mock Online Mode.");
+    }
 } catch (error) {
-    console.warn("Firebase config missing or invalid. Online mode will not sync.", error);
+    console.warn("Firebase config invalid. Running in Mock Online Mode.", error);
 }
 
 export const createOnlineRoom = async (roomCode, initialData) => {
-    if (!db) return;
+    // If no DB, we just pretend it worked so the UI can proceed (Mock Mode)
+    if (!db) {
+        console.log("Mocking Room Creation:", roomCode);
+        return true;
+    }
     try {
         await setDoc(doc(db, "rooms", roomCode), initialData);
         return true;
@@ -53,7 +61,10 @@ export const joinOnlineRoom = async (roomCode, playerData) => {
 };
 
 export const subscribeToRoom = (roomCode, callback) => {
-    if (!db) return () => { };
+    if (!db) {
+        console.log("Mock Subscribing to Room (No DB)", roomCode);
+        return () => { };
+    }
     return onSnapshot(doc(db, "rooms", roomCode), (doc) => {
         if (doc.exists()) {
             callback(doc.data());
