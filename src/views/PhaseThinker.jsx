@@ -3,7 +3,7 @@ import useGameStore from '../store/gameStore';
 import Slider from '../components/Slider';
 import Button from '../components/Button';
 import Input from '../components/Input';
-import { clsx } from 'clsx'; // Should ensure clsx is installed or use tailwind-merge if preferred
+import clsx from 'clsx';
 
 const PhaseThinker = () => {
     const { theme, targetValue, submitClue, gameMode, skipTheme, skipsRemaining } = useGameStore();
