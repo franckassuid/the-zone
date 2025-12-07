@@ -242,18 +242,25 @@ const useGameStore = create((set, get) => ({
             skipsRemaining: 2
         };
 
-        // Create in Firebase
-        const success = await createOnlineRoom(code, initialRoomState);
+        // Create in Firebase with a timeout race
+        // If Firebase takes > 2s, we assume it failed or is slow and proceed anyway showing the lobby
+        const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve('TIMEOUT'), 3000));
+        const creationPromise = createOnlineRoom(code, initialRoomState);
 
-        if (!success) {
+        const result = await Promise.race([creationPromise, timeoutPromise]);
+
+        if (result === 'TIMEOUT') {
+            console.warn("Firebase creation timed out (>3s). Proceeding locally.");
+        } else if (!result) {
+            // Explicit failure (false returned)
             console.error("Failed to create room in Firebase. Check logs.");
             const { isFirebaseInitialized } = await import('../services/firebase');
             if (isFirebaseInitialized) {
                 alert("Erreur de création ! Vérifiez vos règles Firestore.");
                 console.error("Creation failed despite initialization. Check Rules.");
             }
-            // Proceed locally anyway to allow UI interaction
-            // return; // REMOVED to unblock UI
+        } else {
+            console.log("Room created successfully (Confirmed via Promise).");
         }
 
         set({
