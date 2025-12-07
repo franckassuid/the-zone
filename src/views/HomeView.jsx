@@ -5,7 +5,7 @@ import useGameStore from '../store/gameStore';
 import { isFirebaseInitialized } from '../services/firebase';
 
 const HomeView = () => {
-    const { setNickname, createRoom, joinRoom, startOfflineGame } = useGameStore();
+    const { setNickname, createRoom, joinRoom, startOfflineGame, isJoining } = useGameStore();
     const [name, setName] = useState('');
     const [code, setCode] = useState('');
     const [view, setView] = useState('main'); // main, online-menu, join
@@ -48,8 +48,8 @@ const HomeView = () => {
                 {/* Status Footer */}
                 <div className="absolute -bottom-4 left-0 right-0 text-center pb-4">
                     <div className={`inline-flex items-center space-x-2 px-3 py-1 rounded-full text-[10px] uppercase font-bold tracking-wider ${isFirebaseInitialized
-                            ? "bg-green-500/10 text-green-400 border border-green-500/20"
-                            : "bg-red-500/10 text-red-400 border border-red-500/20"
+                        ? "bg-green-500/10 text-green-400 border border-green-500/20"
+                        : "bg-red-500/10 text-red-400 border border-red-500/20"
                         }`}>
                         <div className={`w-2 h-2 rounded-full ${isFirebaseInitialized ? "bg-green-500 animate-pulse" : "bg-red-500"}`}></div>
                         <span>{isFirebaseInitialized ? "Serveur Connecté" : "Mode Simulation (Pas de serveur)"}</span>
@@ -92,8 +92,8 @@ const HomeView = () => {
                         onChange={(e) => setCode(e.target.value.toUpperCase())}
                         maxLength={4}
                     />
-                    <Button fullWidth onClick={handleJoin} disabled={!code}>
-                        Entrer
+                    <Button fullWidth onClick={handleJoin} disabled={!code || isJoining}>
+                        {isJoining ? "Connexion en cours..." : "Entrer"}
                     </Button>
                 </div>
             )}

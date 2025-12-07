@@ -219,8 +219,10 @@ const useGameStore = create((set, get) => ({
     clue: '',
     sliderValue: 50,
     skipsRemaining: 2,
+    isJoining: false,
 
     setNickname: (name) => set({ nickname: name }),
+    setIsJoining: (loading) => set({ isJoining: loading }),
 
     createRoom: async () => {
         const state = get();
@@ -280,8 +282,22 @@ const useGameStore = create((set, get) => ({
         const state = get();
         const player = { name: state.nickname || 'Invité', id: Date.now() };
 
-        try {
-            await joinOnlineRoom(code, player);
+        set({ isJoining: true });
+
+        // Similar race condition with timeout for joining
+        const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve('TIMEOUT'), 5000));
+        const joinPromise = joinOnlineRoom(code, player).then(data => ({ status: 'SUCCESS', data })).catch(e => ({ status: 'ERROR', error: e }));
+
+        const result = await Promise.race([joinPromise, timeoutPromise]);
+
+        set({ isJoining: false });
+
+        if (result === 'TIMEOUT') {
+            alert("La connexion à la salle est très lente. Réessayez ou vérifiez votre réseau.");
+            // Proceed locally? No, if we can't fetch the room, we can't join.
+        } else if (result.status === 'ERROR') {
+            alert("Room introuvable ! (Ou erreur de connexion)");
+        } else if (result.status === 'SUCCESS') {
             set({
                 gameState: 'LOBBY',
                 gameMode: 'ONLINE',
@@ -289,8 +305,6 @@ const useGameStore = create((set, get) => ({
                 roomCode: code
             });
             get().subscribeToRoom(code);
-        } catch (e) {
-            alert("Room introuvable !");
         }
     },
 
