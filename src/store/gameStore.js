@@ -224,6 +224,9 @@ const useGameStore = create((set, get) => ({
 
     createRoom: async () => {
         const state = get();
+        // DEBUG: Proof of life
+        console.log("createRoom called via UI");
+
         const code = Math.random().toString(36).substring(2, 6).toUpperCase();
         const initialPlayers = [{ name: state.nickname || 'Hôte', id: Date.now() }];
 
@@ -245,15 +248,11 @@ const useGameStore = create((set, get) => ({
             console.error("Failed to create room in Firebase. Check logs.");
             const { isFirebaseInitialized } = await import('../services/firebase');
             if (isFirebaseInitialized) {
-                alert("Erreur de création ! Vérifiez vos règles Firestore (Mode Test/Auth).");
+                alert("Erreur de création ! Vérifiez vos règles Firestore.");
                 console.error("Creation failed despite initialization. Check Rules.");
             }
-            // Proceed locally anyway? Or stop?
-            // If initialized but failed, it's likely a permission error.
-            // Let's force local execution to verify logic if desired, but user wants Online.
-            // Let's stop and let them see the alert.
-            return;
-            // Actually, proceeding locally is confusing if they think they are online.
+            // Proceed locally anyway to allow UI interaction
+            // return; // REMOVED to unblock UI
         }
 
         set({
