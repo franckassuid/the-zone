@@ -285,7 +285,7 @@ const useGameStore = create((set, get) => ({
         set({ isJoining: true });
 
         // Similar race condition with timeout for joining
-        const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve('TIMEOUT'), 5000));
+        const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve('TIMEOUT'), 10000));
         const joinPromise = joinOnlineRoom(code, player).then(data => ({ status: 'SUCCESS', data })).catch(e => ({ status: 'ERROR', error: e }));
 
         const result = await Promise.race([joinPromise, timeoutPromise]);
