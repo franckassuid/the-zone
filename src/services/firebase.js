@@ -15,7 +15,7 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-let db;
+export let db;
 export let isFirebaseInitialized = false;
 
 try {

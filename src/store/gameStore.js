@@ -226,6 +226,7 @@ const useGameStore = create((set, get) => ({
         const state = get();
         // DEBUG: Proof of life
         console.log("createRoom called via UI");
+        import('../services/firebase').then(m => console.log("DB Instance:", m.db));
 
         const code = Math.random().toString(36).substring(2, 6).toUpperCase();
         const initialPlayers = [{ name: state.nickname || 'Hôte', id: Date.now() }];
