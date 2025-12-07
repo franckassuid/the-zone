@@ -16,11 +16,14 @@ const firebaseConfig = {
 
 // Initialize Firebase
 let db;
+export let isFirebaseInitialized = false;
+
 try {
     // Only initialize if we have at least an API key, otherwise allow "mock" online mode
     if (firebaseConfig.apiKey) {
         const app = initializeApp(firebaseConfig);
         db = getFirestore(app);
+        isFirebaseInitialized = true;
     } else {
         console.warn("Firebase config missing. Running in Mock Online Mode.");
     }
