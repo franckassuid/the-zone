@@ -14,6 +14,7 @@ const Slider = ({
     className
 }) => {
     const { syncSlider } = useGameStore();
+    const containerRef = useRef(null);
     const constraintsRef = useRef(null);
 
     // Angle: -90 (left) to 90 (right). 0 is top/center.
