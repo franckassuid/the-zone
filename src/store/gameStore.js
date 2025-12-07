@@ -245,7 +245,8 @@ const useGameStore = create((set, get) => ({
             console.error("Failed to create room in Firebase. Check logs.");
             const { isFirebaseInitialized } = await import('../services/firebase');
             if (isFirebaseInitialized) {
-                alert("Erreur de création ! Vérifiez vos règles Firestore (Mode Test/Auth).");
+                // alert("Erreur de création ! Vérifiez vos règles Firestore (Mode Test/Auth).");
+                console.error("Creation failed despite initialization. Check Rules.");
             }
             // Proceed locally anyway? Or stop?
             // If initialized but failed, it's likely a permission error.
