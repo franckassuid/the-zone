@@ -239,7 +239,21 @@ const useGameStore = create((set, get) => ({
         };
 
         // Create in Firebase
-        await createOnlineRoom(code, initialRoomState);
+        const success = await createOnlineRoom(code, initialRoomState);
+
+        if (!success) {
+            console.error("Failed to create room in Firebase. Check logs.");
+            const { isFirebaseInitialized } = await import('../services/firebase');
+            if (isFirebaseInitialized) {
+                alert("Erreur de création ! Vérifiez vos règles Firestore (Mode Test/Auth).");
+            }
+            // Proceed locally anyway? Or stop?
+            // If initialized but failed, it's likely a permission error.
+            // Let's force local execution to verify logic if desired, but user wants Online.
+            // Let's stop and let them see the alert.
+            return;
+            // Actually, proceeding locally is confusing if they think they are online.
+        }
 
         set({
             gameState: 'LOBBY',

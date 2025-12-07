@@ -39,9 +39,11 @@ export const createOnlineRoom = async (roomCode, initialData) => {
     }
     try {
         await setDoc(doc(db, "rooms", roomCode), initialData);
+        console.log("Room Created Successfully:", roomCode);
         return true;
     } catch (e) {
-        console.error("Error creating room: ", e);
+        console.error("Error creating room (Check Firestore Rules!): ", e);
+        // Fallback to local if creation fails? 
         return false;
     }
 };
